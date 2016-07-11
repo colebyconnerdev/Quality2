@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
+    tools:context="com.ccdev.quality.CameraActivity"
+    android:id="@+id/camera_layout">
+
+    <FrameLayout
+        android:id="@+id/camera_preview"
+        android:background="@android:color/black"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintLeft_toLeftOf="@+id/camera_layout"
+        app:layout_constraintTop_toTopOf="@+id/camera_layout"
+        app:layout_constraintRight_toRightOf="@+id/camera_layout"
+        app:layout_constraintBottom_toBottomOf="@+id/camera_layout"/>
+
+    <Button
+        android:id="@+id/camera_capture"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginRight="40dp"
+        android:background="@drawable/camera_button"
+        app:layout_constraintTop_toTopOf="@+id/camera_layout"
+        app:layout_constraintRight_toRightOf="@+id/camera_layout"
+        app:layout_constraintBottom_toBottomOf="@+id/camera_layout"/>
+
+</android.support.constraint.ConstraintLayout>

@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/login_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:layout_margin="32dp">
+
+    <ImageView
+        android:id="@+id/login_logo"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginBottom="32dp"
+        android:layout_marginTop="16dp"
+        app:layout_constraintBottom_toTopOf="@+id/login_username"
+        app:layout_constraintLeft_toLeftOf="@+id/login_layout"
+        app:layout_constraintRight_toRightOf="@+id/login_layout"
+        app:layout_constraintTop_toTopOf="@+id/login_layout"
+        app:srcCompat="@drawable/aie_logo_small" />
+
+    <EditText
+        android:id="@+id/login_username"
+        android:layout_width="0dp"
+        android:layout_height="44dp"
+        android:layout_marginBottom="16dp"
+        android:background="#E8E8E8"
+        android:ems="10"
+        android:hint="Username"
+        android:inputType="textPersonName"
+        android:textAlignment="center"
+        app:layout_constraintBottom_toTopOf="@+id/login_password"
+        app:layout_constraintLeft_toLeftOf="@+id/login_layout"
+        app:layout_constraintRight_toRightOf="@+id/login_layout" />
+
+    <EditText
+        android:id="@+id/login_password"
+        android:layout_width="0dp"
+        android:layout_height="44dp"
+        android:layout_marginBottom="16dp"
+        android:background="#E8E8E8"
+        android:ems="10"
+        android:hint="Password"
+        android:inputType="textPassword"
+        android:textAlignment="center"
+        app:layout_constraintBottom_toTopOf="@+id/login_rememberMe"
+        app:layout_constraintLeft_toLeftOf="@+id/login_layout"
+        app:layout_constraintRight_toRightOf="@+id/login_layout" />
+
+    <CheckBox
+        android:id="@+id/login_rememberMe"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="48dp"
+        android:text="Remember Me"
+        app:layout_constraintBottom_toTopOf="@+id/login_buttons"
+        app:layout_constraintLeft_toLeftOf="@+id/login_layout" />
+
+    <LinearLayout
+        android:id="@+id/login_buttons"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        app:layout_constraintBottom_toBottomOf="@+id/login_layout"
+        app:layout_constraintLeft_toLeftOf="@+id/login_layout"
+        app:layout_constraintRight_toRightOf="@+id/login_layout">
+
+
+        <Button
+            android:id="@+id/login_serverSettings"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Settings" />
+
+        <Button
+            android:id="@+id/login_confirm"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Login" />
+
+    </LinearLayout>
+
+
+</android.support.constraint.ConstraintLayout>

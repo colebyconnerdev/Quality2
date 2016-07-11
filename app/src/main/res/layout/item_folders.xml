@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="8dp"
+    android:duplicateParentState="true"
+    android:id="@+id/item_folders_layout">
+
+    <ImageView
+        android:id="@+id/item_folders_thumbnail"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        app:layout_constraintLeft_toLeftOf="@+id/item_folders_layout"
+        app:layout_constraintTop_toTopOf="@+id/item_folders_layout"/>
+
+    <ProgressBar
+        android:id="@+id/item_folders_loading"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:indeterminate="true"
+        android:indeterminateDrawable="@drawable/loading"
+        app:layout_constraintLeft_toLeftOf="@+id/item_folders_layout"
+        app:layout_constraintTop_toTopOf="@+id/item_folders_layout"/>
+
+    <TextView
+        android:id="@+id/item_folders_fileName"
+        android:text="file_name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="8dp"
+        android:textSize="14sp"
+        app:layout_constraintLeft_toRightOf="@+id/item_folders_thumbnail"
+        app:layout_constraintTop_toTopOf="@+id/item_folders_thumbnail"/>
+
+    <TextView
+        android:id="@+id/item_folders_fileDetials"
+        android:text="file_details"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="8dp"
+        android:textSize="14sp"
+        app:layout_constraintLeft_toRightOf="@+id/item_folders_thumbnail"
+        app:layout_constraintBottom_toBottomOf="@+id/item_folders_thumbnail"/>
+
+    <Button
+        android:id="@+id/item_folders_button"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:layout_marginTop="5dp"
+        android:background="@drawable/item_edit"
+        app:layout_constraintRight_toRightOf="@+id/item_folders_layout"
+        app:layout_constraintTop_toTopOf="@+id/item_folders_layout"/>
+</android.support.constraint.ConstraintLayout>
