@@ -10,14 +10,17 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.MalformedURLException;
+import java.net.UnknownHostException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 
 import jcifs.smb.SmbException;
 import jcifs.smb.SmbFile;
+import jcifs.smb.SmbFileInputStream;
 import jcifs.smb.SmbFileOutputStream;
 
 /**
@@ -28,6 +31,11 @@ public class NetworkHelper {
 
     private static final String TAG = "Quality.NetworkHelper";
     private static final String FILES_FILTER = "(?i).*(.tif|.tiff|.gif|.jpeg|.jpg|.png)";
+    private static final int BUFFER_SIZE = 4096;
+    private static final int THUMB_QUALITY = 100;
+    private static final int THUMB_WIDTH = 100;
+    private static final int THUMB_HEIGHT = 100;
+
     public static final SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy hh:mm aa");
 
     private static ArrayList<NetworkFile> mNetworkFiles;
@@ -153,6 +161,7 @@ public class NetworkHelper {
             smbRoot = new SmbFile(pathToDir);
         } catch (MalformedURLException e) {
             ErrorStack.add(TAG, "getFileTree(): error creating SmbFile:");
+            ErrorStack.add(TAG, "^-- " + smbRoot.getPath());
             ErrorStack.add(TAG, "^-- " + e.toString());
             return false;
         }
@@ -165,6 +174,7 @@ public class NetworkHelper {
             }
         } catch (SmbException e) {
             ErrorStack.add(TAG, "getFileTree(): error checking SmbFile:");
+            ErrorStack.add(TAG, "^-- " + smbRoot.getPath());
             ErrorStack.add(TAG, "^-- " + e.toString());
             return false;
         }
@@ -191,8 +201,8 @@ public class NetworkHelper {
                 if (smbFile.isFile() && smbFile.getName().matches(FILES_FILTER)) {
                     mNetworkFiles.add(new NetworkFile(
                             smbFile.getName(),
-                            smbFile.getPath(),
                             dateFormat.format(smbFile.getDate()),
+                            smbFile.getPath(),
                             false
                     ));
                 }
@@ -205,15 +215,217 @@ public class NetworkHelper {
         return true;
     }
 
-    public static Bitmap createOrGetThumbnail(String pathToFile) {
+    public static Bitmap getOrCreateThumbnail(String pathToFile) {
+        SmbFile smbFile;
+        boolean thumbsDirExists = false;
+        boolean thumbnailExists = false;
+        BufferedInputStream inputStream;
+        BufferedOutputStream outputStream;
+        Bitmap bitmap;
 
         NetworkBitmap networkBitmap = new NetworkBitmap(pathToFile);
 
-        // TODO check thumbs dir - getThumbsDirFromNetwork(networkBitmap)
-        // TODO create? exists - ^ result
-        // TODO not created -> error
+        // check to see if parent directory exists
 
-        // TODO download thumb - getThumbFromNetwork(networkBitmap)
-        // TODO if created, upload thumb - ^ result
+        try {
+            smbFile = new SmbFile(networkBitmap.getPathToParentDir());
+        } catch (MalformedURLException e) {
+            ErrorStack.add(TAG, "getOrCreateThumbnail(): (parent dir) smbFile = new SmbFile().");
+            ErrorStack.add(TAG, "^-- " + networkBitmap.getPathToParentDir());
+            ErrorStack.add(TAG, "^-- " + e.toString());
+            return null;
+        }
+
+        try {
+            if (!smbFile.exists()) {
+                ErrorStack.add(TAG, "getOrCreateThumbnail(): parent dir does not exist.");
+                ErrorStack.add(TAG, "^-- " + networkBitmap.getPathToParentDir());
+                return null;
+            }
+        } catch (SmbException e) {
+            ErrorStack.add(TAG, "getOrCreateThumbnail(): (parent dir) smbFile.exists().");
+            ErrorStack.add(TAG, "^-- " + networkBitmap.getPathToParentDir());
+            ErrorStack.add(TAG, "^-- " + e.toString());
+            return null;
+        }
+
+        // check to see if thumbnail directory exists
+
+        try {
+            smbFile = new SmbFile(networkBitmap.getPathToThumbsDir());
+        } catch (MalformedURLException e) {
+            ErrorStack.add(TAG, "getOrCreateThumbnail(): (thumbnail dir) smbFile = new SmbFile().");
+            ErrorStack.add(TAG, "^-- " + networkBitmap.getPathToThumbsDir());
+            ErrorStack.add(TAG, "^-- " + e.toString());
+            return null;
+        }
+
+        try {
+            thumbsDirExists = smbFile.exists();
+        } catch (SmbException e) {
+            ErrorStack.add(TAG, "getOrCreateThumbnail(): (thumbnail dir) smbFile.exists().");
+            ErrorStack.add(TAG, "^-- " + networkBitmap.getPathToThumbsDir());
+            ErrorStack.add(TAG, "^-- " + e.toString());
+            return null;
+        }
+
+        // if thumbnail directory does not exist attempt to create it
+
+        try {
+            if (!thumbsDirExists) {
+                smbFile.mkdir();
+                smbFile.setAttributes(SmbFile.ATTR_HIDDEN);
+            }
+        } catch (SmbException e) {
+            ErrorStack.add(TAG, "getOrCreateThumbnail(): (thumbnail dir) smbFile.mkdir().");
+            ErrorStack.add(TAG, "^-- " + networkBitmap.getPathToThumbsDir());
+            ErrorStack.add(TAG, "^-- " + e.toString());
+            ErrorStack.dump();
+            ErrorStack.flush();
+            // don't return here, folder may have been created by other thread.
+        }
+
+        // check to see if thumbnail exists
+
+        try {
+            smbFile = new SmbFile(networkBitmap.getPathToThumb());
+        } catch (MalformedURLException e) {
+            ErrorStack.add(TAG, "getOrCreateThumbnail(): (thumbnail) smbFile = new SmbFile().");
+            ErrorStack.add(TAG, "^-- " + networkBitmap.getPathToThumb());
+            ErrorStack.add(TAG, "^-- " + e.toString());
+            return null;
+        }
+
+        try {
+            thumbnailExists = smbFile.exists();
+        } catch (SmbException e) {
+            ErrorStack.add(TAG, "getOrCreateThumbnail(): (thumbnail) smbFile.exists().");
+            ErrorStack.add(TAG, "^-- " + networkBitmap.getPathToThumb());
+            ErrorStack.add(TAG, "^-- " + e.toString());
+            return null;
+        }
+
+        // create the appropriate input stream
+
+        try {
+            if (thumbnailExists) {
+                inputStream = new BufferedInputStream(
+                        new SmbFileInputStream(networkBitmap.getPathToThumb()), BUFFER_SIZE);
+            } else {
+                inputStream = new BufferedInputStream(
+                        new SmbFileInputStream(networkBitmap.getPathToFile()), BUFFER_SIZE);
+            }
+        } catch (MalformedURLException e) {
+            ErrorStack.add(TAG, "getOrCreateThumbnail(): inputStream = new BufferedInputStream().");
+            ErrorStack.add(TAG, "^-- " + (thumbnailExists ?
+                    networkBitmap.getPathToThumb() : networkBitmap.getPathToFile()));
+            ErrorStack.add(TAG, "^-- " + e.toString());
+            return null;
+        } catch (UnknownHostException e ) {;
+            ErrorStack.add(TAG, "getOrCreateThumbnail(): inputStream = new BufferedInputStream().");
+            ErrorStack.add(TAG, "^-- " + (thumbnailExists ?
+                    networkBitmap.getPathToThumb() : networkBitmap.getPathToFile()));
+            ErrorStack.add(TAG, "^-- " + e.toString());
+            return null;
+        } catch (SmbException e) {
+            ErrorStack.add(TAG, "getOrCreateThumbnail(): inputStream = new BufferedInputStream().");
+            ErrorStack.add(TAG, "^-- " + (thumbnailExists ?
+                    networkBitmap.getPathToThumb() : networkBitmap.getPathToFile()));
+            ErrorStack.add(TAG, "^-- " + e.toString());
+            return null;
+        }
+
+        // if thumbnail does not exist create options to scale full size photo
+
+        BitmapFactory.Options options = new BitmapFactory.Options();
+
+        if (!thumbnailExists) {
+            options.inJustDecodeBounds = true;
+            BitmapFactory.decodeStream(inputStream, null, options);
+
+            options.inJustDecodeBounds = false;
+            options.inSampleSize = 1;
+
+            final int height = options.outHeight;
+            final int width = options.outWidth;
+
+            if (height > THUMB_HEIGHT || width > THUMB_WIDTH) {
+
+                final int halfWidth = width / 2;
+                final int halfHeight = height / 2;
+
+                while ((halfHeight / options.inSampleSize) > THUMB_HEIGHT
+                        && (halfWidth / options.inSampleSize) > THUMB_WIDTH) {
+                    options.inSampleSize *= 2;
+                }
+
+            }
+
+            try {
+                inputStream = new BufferedInputStream(new SmbFileInputStream(networkBitmap.getPathToFile()), BUFFER_SIZE);
+            } catch (MalformedURLException e) {
+                ErrorStack.add(TAG, "getOrCreateThumbnail(): inputStream = new BufferedInputStream().");
+                ErrorStack.add(TAG, "^-- " + (thumbnailExists ?
+                        networkBitmap.getPathToThumb() : networkBitmap.getPathToFile()));
+                ErrorStack.add(TAG, "^-- " + e.toString());
+                return null;
+            } catch (UnknownHostException e ) {;
+                ErrorStack.add(TAG, "getOrCreateThumbnail(): inputStream = new BufferedInputStream().");
+                ErrorStack.add(TAG, "^-- " + (thumbnailExists ?
+                        networkBitmap.getPathToThumb() : networkBitmap.getPathToFile()));
+                ErrorStack.add(TAG, "^-- " + e.toString());
+                return null;
+            } catch (SmbException e) {
+                ErrorStack.add(TAG, "getOrCreateThumbnail(): inputStream = new BufferedInputStream().");
+                ErrorStack.add(TAG, "^-- " + (thumbnailExists ?
+                        networkBitmap.getPathToThumb() : networkBitmap.getPathToFile()));
+                ErrorStack.add(TAG, "^-- " + e.toString());
+                return null;
+            }
+        }
+
+        // download the thumbnail
+
+        bitmap = BitmapFactory.decodeStream(inputStream, null, options);
+
+        try {
+            inputStream.close();
+        } catch (IOException e) {
+            // this exception does not need broadcast
+        }
+
+        if (bitmap == null) {
+            ErrorStack.add(TAG, "getOrCreateThumbnail(): BitmapFactory.decodeStream() returned null.");
+            return null;
+        }
+
+        // if thumbnail was created upload
+
+        if (!thumbnailExists) {
+
+            try {
+                outputStream = new BufferedOutputStream(new SmbFileOutputStream(networkBitmap.getPathToThumb()));
+            } catch (MalformedURLException e) {
+                ErrorStack.add(TAG, "getOrCreateThumbnail(): outputStream = new BufferedOutputStream().");
+                ErrorStack.add(TAG, "^-- " + networkBitmap.getPathToThumb());
+                ErrorStack.add(TAG, "^-- " + e.toString());
+                return null;
+            } catch (UnknownHostException e) {
+                ;
+                ErrorStack.add(TAG, "getOrCreateThumbnail(): outputStream = new BufferedOutputStream().");
+                ErrorStack.add(TAG, "^-- " + networkBitmap.getPathToThumb());
+                ErrorStack.add(TAG, "^-- " + e.toString());
+                return null;
+            } catch (SmbException e) {
+                ErrorStack.add(TAG, "getOrCreateThumbnail(): outputStream = new BufferedOutputStream().");
+                ErrorStack.add(TAG, "^-- " + networkBitmap.getPathToThumb());
+                ErrorStack.add(TAG, "^-- " + e.toString());
+                return null;
+            }
+
+            bitmap.compress(Bitmap.CompressFormat.JPEG, THUMB_QUALITY, outputStream);
+        }
+
+        return bitmap;
     }
 }

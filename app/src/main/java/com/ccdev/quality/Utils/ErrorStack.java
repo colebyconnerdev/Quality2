@@ -14,6 +14,8 @@ public class ErrorStack {
     private static boolean mLogging = false;
     private static ArrayList<StackItem> mStack = new ArrayList<>();
 
+    // TODO this might not work, concurrent modifications exception
+
     private static class StackItem {
         private String tag;
         private String errorMessage;
@@ -36,7 +38,7 @@ public class ErrorStack {
         if (!mLogging) return;
 
         for (StackItem item : mStack) {
-            Log.d(item.tag, item.errorMessage);
+            Log.e(item.tag, item.errorMessage);
         }
     }
 

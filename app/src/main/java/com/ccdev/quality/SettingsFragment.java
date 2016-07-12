@@ -155,49 +155,39 @@ public class SettingsFragment extends BackHandledFragment {
             Prefs.setPathToRoot(pathToRoot);
         }
 
+        String username = mUsername.getText().toString();
+        if (username.isEmpty()) {
+            Prefs.reset();
+            missingFieldError(mUsername, "Username cannot be blank.");
+            return;
+        } else if (false) {
+            // TODO check format
+            return;
+        } else {
+            Prefs.setUsername(username);
+        }
+
+        String password = mPassword.getText().toString();
+        if (password.isEmpty()) {
+            Prefs.reset();
+            missingFieldError(mPassword, "Password cannot be blank.");
+            return;
+        } else if (false) {
+            // TODO check format
+            return;
+        } else {
+            Prefs.setPassword(password);
+        }
+
         boolean rememberMe = mRememberMe.isChecked();
         Prefs.setRememberMe(rememberMe);
-
-        if (!rememberMe) {
-
-            Prefs.setUsername("");
-            Prefs.setPassword("");
-            Prefs.setRememberMe(false);
-
-        } else {
-
-            String username = mUsername.getText().toString();
-            if (username.isEmpty()) {
-                Prefs.reset();
-                missingFieldError(mUsername, "Username cannot be blank.");
-                return;
-            } else if (false) {
-                // TODO check format
-                return;
-            } else {
-                Prefs.setUsername(username);
-            }
-
-            String password = mPassword.getText().toString();
-            if (password.isEmpty()) {
-                Prefs.reset();
-                missingFieldError(mPassword, "Password cannot be blank.");
-                return;
-            } else if (false) {
-                // TODO check format
-                return;
-            } else {
-                Prefs.setPassword(password);
-            }
-
-        }
 
         mGetFileTreeThread = new Thread(new Runnable() {
             @Override
             public void run() {
 
                 if (NetworkHelper.getInitialFileTree()) {
-                    Prefs.commit(Prefs.BOTH_SETTINGS);
+                    Prefs.commit();
                     mCallback.OnSettingsResult(RESULT_OK);
                 } else {
                     Prefs.reset();
@@ -215,18 +205,27 @@ public class SettingsFragment extends BackHandledFragment {
     }
 
 
-    private void generalError(String message) {
+    private void generalError(final String message) {
         // TODO make dialog
-
-        Toast.makeText(getContext(), message, Toast.LENGTH_LONG).show();
+        getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(getContext(), message, Toast.LENGTH_LONG).show();
+            }
+        });
     }
 
-    private void missingFieldError(EditText editText, String message) {
+    private void missingFieldError(final EditText editText, final String message) {
         // TODO make dialog
+        getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
 
-        editText.requestFocus();
-        editText.selectAll();
+                editText.requestFocus();
+                editText.selectAll();
 
-        Toast.makeText(getContext(), message, Toast.LENGTH_LONG).show();
+                Toast.makeText(getContext(), message, Toast.LENGTH_LONG).show();
+            }
+        });
     }
 }

@@ -29,7 +29,7 @@ public class MainActivity extends FragmentActivity implements
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        ErrorStack.setLogging(true);
+        //ErrorStack.setLogging(true);
 
         Prefs.getPrefs(this);
         System.setProperty("jcifs.smb.client.responseTimeout", "5000");

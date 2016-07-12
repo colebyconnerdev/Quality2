@@ -113,9 +113,7 @@ public class FoldersFragment extends BackHandledFragment {
 
         updateFiles(NetworkHelper.getNetworkFiles());
 
-        String header = NetworkHelper.getCurrentName();
-        header = header.substring(0, header.length() - 2);
-        mHeader.setText(header);
+        updateHeader(NetworkHelper.getCurrentName());
 
         updateBreadCrumbs(NetworkHelper.getCurrentPath());
     }
@@ -139,8 +137,42 @@ public class FoldersFragment extends BackHandledFragment {
 
     @Override
     public boolean onBackPressed() {
-        // TODO handle backPressed()
-        return false;
+        // TODO grab returned thread
+        goBackThreaded();
+        return true;
+    }
+
+    private Thread goBackThreaded() {
+        Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                goBack();
+            }
+        });
+        thread.start();
+
+        return thread;
+    }
+
+    private void goBack() {
+        if (mPathsStack != null && mPathsStack.size() > 1) {
+            getFileTreeThreaded(mPathsStack.get(mPathsStack.size() - 2));
+        }
+    }
+
+    private void updateHeaderOnUiThread(final String currentPath) {
+        getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                updateHeader(currentPath);
+            }
+        });
+    }
+
+    private void updateHeader(String currentPath) {
+        String header = currentPath;
+        header = header.substring(0, header.length() - 1);
+        mHeader.setText(header);
     }
 
     private void updateBreadCrumbsOnUiThread(final String currentPath) {
@@ -156,8 +188,7 @@ public class FoldersFragment extends BackHandledFragment {
 
         if (mPathsStack.isEmpty()) {
             String[] rootSplit = Prefs.getPathToRoot().split("/");
-            String name = rootSplit[rootSplit.length - 1];
-            name = name.substring(0, name.length() - 2);
+            String name = rootSplit[rootSplit.length - 1];;
 
             mPathsStack.add(currentPath);
 
@@ -171,7 +202,6 @@ public class FoldersFragment extends BackHandledFragment {
 
         String[] currentSplit = currentPath.replace(Prefs.getAuthString(), "").split("/");
         String name = currentSplit[currentSplit.length - 1];
-        name = name.substring(0, name.length() - 2);
 
         if (currentPath.length() == lastPath.length()) {
 
@@ -210,7 +240,7 @@ public class FoldersFragment extends BackHandledFragment {
             @Override
             public void onClick(View v) {
                 // TODO grab returned thread
-                // TODO getFileTreeThreaded((String) v.getTag());
+                getFileTreeThreaded(((String) v.getTag()));
             }
         });
 
@@ -231,12 +261,12 @@ public class FoldersFragment extends BackHandledFragment {
         mFilesListLayout.removeAllViews();
 
         for (NetworkHelper.NetworkFile file : files) {
-            View newFile = getFileListView(file);
+            View newFile = getFileView(file);
             mFilesListLayout.addView(newFile);
         }
     }
 
-    private View getFileListView(final NetworkHelper.NetworkFile file) {
+    private View getFileView(final NetworkHelper.NetworkFile file) {
 
         ConstraintLayout itemsLayout = (ConstraintLayout) LayoutInflater.from(getContext())
                 .inflate(R.layout.item_folders, null);
@@ -247,7 +277,9 @@ public class FoldersFragment extends BackHandledFragment {
         TextView detailsView = (TextView) itemsLayout.findViewById(R.id.item_folders_fileDetials);
         Button editButton = (Button) itemsLayout.findViewById(R.id.item_folders_button);
 
-        nameView.setText(file.getFileName());
+        String fileName = file.getFileName();
+        fileName = fileName.substring(0, fileName.length() - 1);
+        nameView.setText(fileName);
         detailsView.setText(file.getDetails());
 
         if (file.isDirectory()) {
@@ -270,7 +302,6 @@ public class FoldersFragment extends BackHandledFragment {
             public void onClick(View v) {
                 if (file.isDirectory()) {
                     // TODO grab returned thread
-                    // TODO handle errors internally
                     getFileTreeThreaded(file.getPathToFile());
                 } else {
                     mCallback.OnFoldersShowPhoto(file.getPathToFile());
@@ -297,17 +328,15 @@ public class FoldersFragment extends BackHandledFragment {
     private void getFileTree(String pathToFile) {
 
         if (NetworkHelper.getFileTree(pathToFile)) {
-            if (NetworkHelper.getFileTree(pathToFile)) {
-                updateBreadCrumbsOnUiThread(pathToFile);
-                updateFilesOnUiThread(NetworkHelper.getNetworkFiles());
-            } else {
-                // TODO handle this internally?
-                generalError("Problems");
-                ErrorStack.add(TAG, "getFileTree(): problem getting file tree.");
-                ErrorStack.add(TAG, "^-- " + pathToFile);
-                ErrorStack.dump();
-                ErrorStack.flush();
-            }
+            updateBreadCrumbsOnUiThread(pathToFile);
+            updateFilesOnUiThread(NetworkHelper.getNetworkFiles());
+            updateHeaderOnUiThread(NetworkHelper.getCurrentName());
+        } else {
+            generalError("Problems getting file tree.");
+            ErrorStack.add(TAG, "getFileTree(): problem getting file tree.");
+            ErrorStack.add(TAG, "^-- " + pathToFile);
+            ErrorStack.dump();
+            ErrorStack.flush();
         }
     }
 
@@ -317,7 +346,15 @@ public class FoldersFragment extends BackHandledFragment {
         Thread thread = new Thread(new Runnable() {
             @Override
             public void run() {
-                getOrCreateThumbnail(pathToFile, thumbnailView, loadingView);
+                Bitmap bitmap = NetworkHelper.getOrCreateThumbnail(pathToFile);
+                if (bitmap != null) {
+                    setThumbnailOnUiThread(bitmap, thumbnailView, loadingView);
+                } else {
+                    ErrorStack.dump();
+                    ErrorStack.flush();
+                    bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.question_mark);
+                    setThumbnailOnUiThread(bitmap, thumbnailView, loadingView);
+                }
             }
         });
         thread.start();
@@ -325,17 +362,8 @@ public class FoldersFragment extends BackHandledFragment {
         return thread;
     }
 
-    // TODO this is where I left off
-    private void getOrCreateThumbnail(
-            String pathToFile, ImageView thumbnailView, ProgressBar loadingView) {
-
-            Bitmap bitmap = NetworkHelper.createOrGetThumbnail(pathToFile);
-            if (bitmap != null) {
-                setThumbnailOnUiThread(bitmap, thumbnailView, loadingView);
-            }
-    }
-
-    private void setThumbnailOnUiThread(final Bitmap bitmap, final ImageView thumbnailView, final ProgressBar loadingView) {
+    private void setThumbnailOnUiThread(
+            final Bitmap bitmap, final ImageView thumbnailView, final ProgressBar loadingView) {
         getActivity().runOnUiThread(new Runnable() {
             @Override
             public void run() {

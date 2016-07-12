@@ -83,33 +83,26 @@ public class Prefs {
         return RESULT_OK;
     }
 
-    public static void commit(int which) {
+    public static void commit() {
 
-        switch (which) {
-            case SERVER_SETTINGS:
-                securePreferences.edit()
-                        .putString(PREFS_DOMAIN, domain)
-                        .putString(PREFS_SERVER_IP, serverIp)
-                        .putString(PREFS_PATH_TO_ROOT, pathToRoot)
-                        .apply();
-                break;
-            case USER_SETTINGS:
-                securePreferences.edit()
-                        .putString(PREFS_USERNAME, username)
-                        .putString(PREFS_PASSWORD, password)
-                        .putBoolean(PREFS_REMEMBER_ME, rememberMe)
-                        .apply();
-                break;
-            case BOTH_SETTINGS:
-                securePreferences.edit()
-                        .putString(PREFS_DOMAIN, domain)
-                        .putString(PREFS_SERVER_IP, serverIp)
-                        .putString(PREFS_PATH_TO_ROOT, pathToRoot)
-                        .putString(PREFS_USERNAME, username)
-                        .putString(PREFS_PASSWORD, password)
-                        .putBoolean(PREFS_REMEMBER_ME, rememberMe)
-                        .apply();
-                break;
+        if (rememberMe) {
+            securePreferences.edit()
+                    .putString(PREFS_DOMAIN, domain)
+                    .putString(PREFS_SERVER_IP, serverIp)
+                    .putString(PREFS_PATH_TO_ROOT, pathToRoot)
+                    .putString(PREFS_USERNAME, username)
+                    .putString(PREFS_PASSWORD, password)
+                    .putBoolean(PREFS_REMEMBER_ME, rememberMe)
+                    .apply();
+        } else {
+            securePreferences.edit()
+                    .putString(PREFS_DOMAIN, domain)
+                    .putString(PREFS_SERVER_IP, serverIp)
+                    .putString(PREFS_PATH_TO_ROOT, pathToRoot)
+                    .putString(PREFS_USERNAME, "")
+                    .putString(PREFS_PASSWORD, "")
+                    .putBoolean(PREFS_REMEMBER_ME, false)
+                    .apply();
         }
     }
 
