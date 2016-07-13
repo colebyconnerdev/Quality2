@@ -1,6 +1,10 @@
 package com.ccdev.quality;
 
+import android.content.Context;
+import android.content.Intent;
 import android.icu.text.IDNA;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
 import android.os.Bundle;
@@ -45,6 +49,11 @@ public class MainActivity extends FragmentActivity implements
     }
 
     @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+    }
+
+    @Override
     public void setSelectedFragment(BackHandledFragment backHandledFragment) {
 
         mSelectedFragment = backHandledFragment;
@@ -85,6 +94,16 @@ public class MainActivity extends FragmentActivity implements
     }
 
     private void determineLandingPage() {
+
+        // TODO recode this
+        ConnectivityManager connManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo mWifi = connManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+
+        if (!mWifi.isConnected()) {
+            Toast.makeText(this, "Turn on Wifi.", Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
 
         if (Prefs.checkSettings(Prefs.SERVER_SETTINGS) != Prefs.RESULT_OK) {
             mFragmentManager

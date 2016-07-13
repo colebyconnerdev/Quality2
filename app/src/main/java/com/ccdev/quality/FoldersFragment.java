@@ -1,5 +1,6 @@
 package com.ccdev.quality;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -11,6 +12,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -23,10 +25,14 @@ import com.ccdev.quality.Utils.ErrorStack;
 import com.ccdev.quality.Utils.NetworkHelper;
 import com.ccdev.quality.Utils.Prefs;
 import com.ccdev.quality.Views.BackHandledFragment;
+import com.google.zxing.integration.android.IntentIntegrator;
+import com.google.zxing.integration.android.IntentResult;
 
 import java.sql.BatchUpdateException;
 import java.util.ArrayList;
 import java.util.Stack;
+
+import static android.app.Activity.RESULT_OK;
 
 /**
  * Created by Coleby on 7/10/2016.
@@ -36,6 +42,8 @@ public class FoldersFragment extends BackHandledFragment {
 
     // private static
     private static final String TAG = "Quality.FoldersFragment";
+    private static final int SCANNER_INTENT = 0;
+    private static final int CAMERA_INTENT = 1;
 
     // public static
     public static int RESULT_NETWORK_NOT_AVAILABLE = -1;
@@ -50,6 +58,12 @@ public class FoldersFragment extends BackHandledFragment {
     private ScrollView mFilesListScroll;
     private LinearLayout mFilesListLayout;
     private Button mNewPhoto, mNewScan, mNewFolder;
+
+    private LinearLayout mDialogLayout;
+    private TextView mDialogHeader;
+    private TextView mDialogText;
+    private EditText mDialogInput;
+    private Button mDialogOk, mDialogCancel;
 
     // threads
 
@@ -81,6 +95,8 @@ public class FoldersFragment extends BackHandledFragment {
             return;
         }
 
+        // folders list
+
         mHeader = (TextView) getView().findViewById(R.id.folders_header);
         mBreadCrumbsScroll = (HorizontalScrollView) getView().findViewById(R.id.folders_breadCrumbsScroll);
         mBreadCrumbsLayout = (LinearLayout) getView().findViewById(R.id.folders_breadCrumbsLayout);
@@ -88,33 +104,42 @@ public class FoldersFragment extends BackHandledFragment {
         mFilesListLayout = (LinearLayout) getView().findViewById(R.id.folders_filesLayout);
         mNewFolder = (Button) getView().findViewById(R.id.folders_newFolder);
         mNewScan = (Button) getView().findViewById(R.id.folders_newScan);
-        mNewFolder =(Button) getView().findViewById(R.id.folders_newPhoto);
+        mNewPhoto =(Button) getView().findViewById(R.id.folders_newPhoto);
 
         mNewFolder.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                // TODO newFolder
+                showNewFolderDialog();
             }
         });
 
         mNewScan.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                // TODO newScan
+                getNewScan();
             }
         });
 
-        mNewFolder.setOnClickListener(new View.OnClickListener() {
+        mNewPhoto.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 // TODO newPhoto
             }
         });
 
+        // dialog
+
+        mDialogLayout = (LinearLayout) getView().findViewById(R.id.folders_dialogLayout);
+        mDialogHeader = (TextView) getView().findViewById(R.id.folders_dialogHeader);
+        mDialogText = (TextView) getView().findViewById(R.id.folders_dialogText);
+        mDialogInput = (EditText) getView().findViewById(R.id.folders_dialogInput);
+        mDialogOk = (Button) getView().findViewById(R.id.folders_dialogConfirm);
+        mDialogCancel = (Button) getView().findViewById(R.id.folders_dialogCancel);
+
+
+
         updateFiles(NetworkHelper.getNetworkFiles());
-
         updateHeader(NetworkHelper.getCurrentName());
-
         updateBreadCrumbs(NetworkHelper.getCurrentPath());
     }
 
@@ -132,7 +157,15 @@ public class FoldersFragment extends BackHandledFragment {
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == SCANNER_INTENT) {
+            if (resultCode == Activity.RESULT_OK) {
+                String contents = data.getStringExtra("SCAN_RESULT");
+                Toast.makeText(getActivity(), "contents: " + contents, Toast.LENGTH_LONG).show();
+            } else if (resultCode == Activity.RESULT_CANCELED) {
+                Toast.makeText(getActivity(), "canceled", Toast.LENGTH_LONG).show();
+            }
+        }
     }
 
     @Override
@@ -380,6 +413,76 @@ public class FoldersFragment extends BackHandledFragment {
             @Override
             public void run() {
                 Toast.makeText(getContext(), message, Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void getNewScan() {
+        Intent intent = IntentIntegrator.forSupportFragment(this).createScanIntent();
+        startActivityForResult(intent, SCANNER_INTENT);
+    }
+
+    private View.OnClickListener mNewFolderConfirm = new View.OnClickListener() {
+        @Override
+        public void onClick(View view) {
+            String newDir = NetworkHelper.getCurrentPath() + mDialogInput.getText().toString() + "/";
+            onNewFolderConfirmThreaded(newDir);
+        }
+    };
+
+    private View.OnClickListener mNewFolderCancel = new View.OnClickListener() {
+        @Override
+        public void onClick(View view) {
+            closeDialog();
+        }
+    };
+
+    private void showNewFolderDialog() {
+
+        // TODO make hardcoded
+        mDialogHeader.setText("Create New Folder");
+        mDialogText.setText("Enter folder name.");
+        mDialogInput.setText("");
+        mDialogOk.setOnClickListener(mNewFolderConfirm);
+        mDialogCancel.setOnClickListener(mNewFolderCancel);
+        mDialogLayout.setVisibility(View.VISIBLE);
+    }
+
+    private Thread onNewFolderConfirmThreaded(final String pathToDir) {
+        Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                onNewFolderConfirm(pathToDir);
+            }
+        });
+        thread.start();
+
+        return thread;
+    }
+
+    private void onNewFolderConfirm(String pathToDir) {
+        // TODO validation
+        if (NetworkHelper.createNewFolder(pathToDir)) {
+            if (NetworkHelper.getFileTree(pathToDir)) {
+                updateHeaderOnUiThread(NetworkHelper.getCurrentName());
+                updateFilesOnUiThread(NetworkHelper.getNetworkFiles());
+                updateBreadCrumbsOnUiThread(NetworkHelper.getCurrentPath());
+            } else {
+
+                // TODO couldn't get files
+            }
+        } else {
+            // TODO couldn't make folder
+        }
+
+        closeDialog();
+    }
+
+    private void closeDialog() {
+        getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mDialogLayout.setVisibility(View.INVISIBLE);
             }
         });
     }

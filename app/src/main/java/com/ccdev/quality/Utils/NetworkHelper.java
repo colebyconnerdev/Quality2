@@ -5,6 +5,7 @@ import android.app.ActivityManager;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.util.Log;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -427,5 +428,35 @@ public class NetworkHelper {
         }
 
         return bitmap;
+    }
+
+    public static boolean createNewFolder(String pathToDir) {
+        SmbFile smbFile;
+
+        try {
+            smbFile = new SmbFile(pathToDir);
+        } catch (MalformedURLException e) {
+            Log.e(TAG, e.toString()); // TODO remove this
+            return false;
+        }
+
+        try {
+            if (smbFile.exists()) {
+                Log.e(TAG, "already exists"); // TODO remove this
+                return true;
+            }
+        } catch (SmbException e) {
+            Log.e(TAG, e.toString()); // TODO remove this
+            return false;
+        }
+
+        try {
+            smbFile.mkdir();
+        } catch (SmbException e) {
+            Log.e(TAG, e.toString()); // TODO remove this
+            return false;
+        }
+
+        return true;
     }
 }
